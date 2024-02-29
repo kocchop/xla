@@ -103,7 +103,7 @@ TEST_F(CudnnNormRewriterTest, LayerNorm2D1) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4], scale: f32[4], bias: f32[4]) -> f32[2,4] {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4], {{.*}}: f32[4], {{.*}}: f32[4]) -> f32[2,4] {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4]{1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[2,4,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[4]{0} parameter(1)
@@ -172,7 +172,7 @@ TEST_F(CudnnNormRewriterTest, LayerNorm4D3) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[8], bias: f32[8]) -> f32[2,4,6,8] {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[8], {{.*}}: f32[8]) -> f32[2,4,6,8] {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[48,8,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[8]{0} parameter(1)
@@ -241,7 +241,7 @@ TEST_F(CudnnNormRewriterTest, LayerNorm4D2) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[6], bias: f32[6]) -> f32[2,4,6,8] {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[6], {{.*}}: f32[6]) -> f32[2,4,6,8] {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE:%[^ ]+]] = f32[2,4,8,6]{3,2,1,0} transpose([[P0]]), dimensions={0,1,3,2}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[64,6,1,1]{3,2,1,0} bitcast([[TRANSPOSE]])
@@ -311,7 +311,7 @@ TEST_F(CudnnNormRewriterTest, LayerNorm4D12) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[4,6], bias: f32[4,6]) -> f32[2,4,6,8] {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[4,6], {{.*}}: f32[4,6]) -> f32[2,4,6,8] {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE:%[^ ]+]] = f32[2,8,4,6]{3,2,1,0} transpose([[P0]]), dimensions={0,3,1,2}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[16,4,6,1]{3,2,1,0} bitcast([[TRANSPOSE]])
@@ -381,7 +381,7 @@ TEST_F(CudnnNormRewriterTest, LayerNorm4D3IncorrectScaleBroadcast) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,2,2,2], scale: f32[2], bias: f32[2]) -> f32[2,2,2,2] {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,2,2,2], {{.*}}: f32[2], {{.*}}: f32[2]) -> f32[2,2,2,2] {
 ; CHECK-NOT:           custom_call_target="__cudnn$norm"
   )";
 
@@ -440,7 +440,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrain2D1) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4], scale: f32[4], bias: f32[4]) -> (f32[2,4], f32[2], f32[2], f32[2]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4], {{.*}}: f32[4], {{.*}}: f32[4]) -> (f32[2,4], f32[2], f32[2], f32[2]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4]{1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[2,4,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[4]{0} parameter(1)
@@ -517,7 +517,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrain4D3) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[8], bias: f32[8]) -> (f32[2,4,6,8], f32[2,4,6], f32[2,4,6], f32[2,4,6]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[8], {{.*}}: f32[8]) -> (f32[2,4,6,8], f32[2,4,6], f32[2,4,6], f32[2,4,6]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[48,8,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[8]{0} parameter(1)
@@ -594,7 +594,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrain4D12) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[4,6], bias: f32[4,6]) -> (f32[2,4,6,8], f32[2,8], f32[2,8], f32[2,8]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[4,6], {{.*}}: f32[4,6]) -> (f32[2,4,6,8], f32[2,8], f32[2,8], f32[2,8]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE:%[^ ]+]] = f32[2,8,4,6]{3,2,1,0} transpose([[P0]]), dimensions={0,3,1,2}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[16,4,6,1]{3,2,1,0} bitcast([[TRANSPOSE]])
@@ -698,7 +698,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward2D1) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4], scale: f32[4], bias: f32[4], doutput: f32[2,4]) -> (f32[2,4], f32[2,4], f32[4], f32[4]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4], {{.*}}: f32[4], {{.*}}: f32[4], {{.*}}: f32[2,4]) -> (f32[2,4], f32[2,4], f32[4], f32[4]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4]{1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[2,4,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[4]{0} parameter(1)
@@ -813,7 +813,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward4D3) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[8], bias: f32[8], doutput: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[8], f32[8]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[8], {{.*}}: f32[8], {{.*}}: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[8], f32[8]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[48,8,1,1]{3,2,1,0} bitcast([[P0]])
 ; CHECK-NEXT:    [[P1:%[^ ]+]] = f32[8]{0} parameter(1)
@@ -928,7 +928,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward4D2) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[6], bias: f32[6], doutput: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[6], f32[6]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[6], {{.*}}: f32[6], {{.*}}: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[6], f32[6]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE0:%[^ ]+]] = f32[2,4,8,6]{3,2,1,0} transpose([[P0]]), dimensions={0,1,3,2}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[64,6,1,1]{3,2,1,0} bitcast([[TRANSPOSE0]])
@@ -1046,7 +1046,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward4D12) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[4,6], bias: f32[4,6], doutput: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4,6], f32[4,6]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[4,6], {{.*}}: f32[4,6], {{.*}}: f32[2,4,6,8]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4,6], f32[4,6]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE0:%[^ ]+]] = f32[2,8,4,6]{3,2,1,0} transpose([[P0]]), dimensions={0,3,1,2}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[16,4,6,1]{3,2,1,0} bitcast([[TRANSPOSE0]])
@@ -1165,7 +1165,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward4D1DoutputReshapeSplit) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[4], bias: f32[4], doutput: f32[2,4,48]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4], f32[4]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[4], {{.*}}: f32[4], {{.*}}: f32[2,4,48]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4], f32[4]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE0:%[^ ]+]] = f32[2,6,8,4]{3,2,1,0} transpose([[P0]]), dimensions={0,2,3,1}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[96,4,1,1]{3,2,1,0} bitcast([[TRANSPOSE0]])
@@ -1284,7 +1284,7 @@ TEST_F(CudnnNormRewriterTest, LayerNormTrainBackward4D1DoutputReshapeCombine) {
 
   const char* optimized_hlo = R"(
 
-; CHECK-LABEL: ENTRY %test (input: f32[2,4,6,8], scale: f32[4], bias: f32[4], doutput: f32[2,4,6,2,2,2]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4], f32[4]) {
+; CHECK-LABEL: ENTRY %test ({{.*}}: f32[2,4,6,8], {{.*}}: f32[4], {{.*}}: f32[4], {{.*}}: f32[2,4,6,2,2,2]) -> (f32[2,4,6,8], f32[2,4,6,8], f32[4], f32[4]) {
 ; CHECK-NEXT:    [[P0:%[^ ]+]] = f32[2,4,6,8]{3,2,1,0} parameter(0)
 ; CHECK-NEXT:    [[TRANSPOSE0:%[^ ]+]] = f32[2,6,8,4]{3,2,1,0} transpose([[P0]]), dimensions={0,2,3,1}
 ; CHECK-NEXT:    [[P0_BITCAST:%[^ ]+]] = f32[96,4,1,1]{3,2,1,0} bitcast([[TRANSPOSE0]])

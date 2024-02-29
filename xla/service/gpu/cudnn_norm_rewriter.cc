@@ -576,14 +576,19 @@ auto Expectation(UniqueHloInstruction* expectation, HloInstruction** reduce,
 auto Variance(UniqueHloInstruction* variance, UniqueHloInstruction* expectation,
               UniqueHloInstruction* x) {
   return m::AnyOf<HloInstruction>(
-      Subtract(Expectation(Square(m::Op().WithPredicate(x->capture_or_verify))),
-               Square(Expectation(expectation,
-                                  m::Op().WithPredicate(x->capture_or_verify))))
+      Subtract(Expectation(Square(OptionalSupportedTransform(
+                   m::Op().WithPredicate(x->capture_or_verify)))),
+               Square(Expectation(expectation, OptionalSupportedTransform(
+                                                   m::Op().WithPredicate(
+                                                       x->capture_or_verify)))))
           .WithPredicate(variance->capture_or_verify),
       Expectation(
-          Square(Subtract(m::Op().WithPredicate(x->capture_or_verify),
-                          Expectation(expectation, m::Op().WithPredicate(
-                                                       x->capture_or_verify)))))
+          Square(Subtract(
+              OptionalSupportedTransform(
+                  m::Op().WithPredicate(x->capture_or_verify)),
+              Expectation(expectation,
+                          OptionalSupportedTransform(
+                              m::Op().WithPredicate(x->capture_or_verify))))))
           .WithPredicate(variance->capture_or_verify));
 }
 
@@ -849,7 +854,8 @@ class CudnnNormRewriterVisitor : public DfsHloRewriteVisitor {
             SubtractMultiplyAddAnyOrder(
                 m::Op().WithPredicate(x.capture_or_verify),
                 Expectation(&expectation, &reduce,
-                            m::Op().WithPredicate(x.capture_or_verify)),
+                            OptionalSupportedTransform(
+                                m::Op().WithPredicate(x.capture_or_verify))),
                 NormFactor(&norm_factor, &x, &variance, &expectation, &epsilon),
                 m::Broadcast(&broadcast_scale, m::Op(&scale)),
                 m::Broadcast(&broadcast_bias, m::Op(&bias))))) {
@@ -880,11 +886,6 @@ class CudnnNormRewriterVisitor : public DfsHloRewriteVisitor {
           !epsilon.Instr()) {
         VLOG(1) << "Layer norm operands not unique.";
         return absl::OkStatus();
-      }
-
-      // Skip initial convert, if present.
-      if (x.Instr()->opcode() == HloOpcode::kConvert) {
-        x.SetInstr(x.Instr()->mutable_operand(0));
       }
 
       // Verify the input and output layouts.
