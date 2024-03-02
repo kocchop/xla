@@ -172,10 +172,7 @@ bool AppliesAddReduce(const HloInstruction* instr,
   if (instr->opcode() != HloOpcode::kReduce) {
     return false;
   }
-  if (ShapeUtil::HasDegenerateDimensions(instr->operand(0)->shape())) {
-    VLOG(1) << "Reduction input must not have degenerate dimensions.";
-    return false;
-  }
+
   // Verify the dimensions of the reduction.
   if (!reduce_dims.empty() && instr->dimensions() != reduce_dims) {
     return false;
@@ -547,12 +544,12 @@ auto Expectation(Pattern pattern) {
 // Expected value, or mean, with optional broadcast.
 template <typename Pattern>
 auto Expectation(UniqueHloInstruction* expectation, Pattern pattern) {
-  auto shared_subpattern =
-      MultiplyAnyOrder(m::Broadcast(m::ConstantScalar()), AddReduce(pattern))
+  auto shared_subpattern = OptionalSupportedTransform(
+      m::MultiplyAnyOrder(m::Broadcast(m::ConstantScalar()), AddReduce(pattern))
           .WithPredicate([](const HloInstruction* instr) {
             return CalculatesExpectation(instr);
           })
-          .WithPredicate(expectation->capture_or_verify);
+          .WithPredicate(expectation->capture_or_verify));
   return m::AnyOf<HloInstruction>(m::Broadcast(shared_subpattern),
                                   shared_subpattern);
 }
@@ -561,12 +558,13 @@ auto Expectation(UniqueHloInstruction* expectation, Pattern pattern) {
 template <typename Pattern>
 auto Expectation(UniqueHloInstruction* expectation, HloInstruction** reduce,
                  Pattern pattern) {
-  auto shared_subpattern = MultiplyAnyOrder(m::Broadcast(m::ConstantScalar()),
-                                            AddReduce(reduce, pattern))
-                               .WithPredicate([](const HloInstruction* instr) {
-                                 return CalculatesExpectation(instr);
-                               })
-                               .WithPredicate(expectation->capture_or_verify);
+  auto shared_subpattern = OptionalSupportedTransform(
+      m::MultiplyAnyOrder(m::Broadcast(m::ConstantScalar()),
+                          AddReduce(reduce, pattern))
+          .WithPredicate([](const HloInstruction* instr) {
+            return CalculatesExpectation(instr);
+          })
+          .WithPredicate(expectation->capture_or_verify));
   return m::AnyOf<HloInstruction>(m::Broadcast(shared_subpattern),
                                   shared_subpattern);
 }
