@@ -850,7 +850,8 @@ class CudnnNormRewriterVisitor : public DfsHloRewriteVisitor {
     if (Match(
             instr,
             SubtractMultiplyAddAnyOrder(
-                m::Op().WithPredicate(x.capture_or_verify),
+                OptionalSupportedTransform(
+                    m::Op().WithPredicate(x.capture_or_verify)),
                 Expectation(&expectation, &reduce,
                             OptionalSupportedTransform(
                                 m::Op().WithPredicate(x.capture_or_verify))),
