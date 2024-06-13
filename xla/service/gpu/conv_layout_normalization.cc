@@ -136,7 +136,12 @@ absl::StatusOr<std::optional<HloInstruction*>> UpdateLayoutForCudnnConvolution(
     const Shape& s = op->shape();
     Shape s_reordered =
         ShapeUtil::MakeShapeWithDescendingLayoutAndSamePhysicalLayout(s);
-    HloInstruction* normalized_op = op->mutable_operand(0);
+    HloInstruction* normalized_op;
+    if (op->operand_count() > 0) {
+      normalized_op = op->mutable_operand(0);
+    } else {
+      normalized_op = op;
+    }
     HloInstruction* new_op;
     if (normalized_op->shape() == s_reordered) {
       new_op = normalized_op;
