@@ -747,6 +747,7 @@ absl::StatusOr<AutotuneResult> GpuConvAlgorithmPicker::AutotuneOneConvRunner(
     for (int i = 0; i < result_buffers.size(); ++i) {
       Shape output_shape = MaybeTupleElementShape(
           runtime_arguments.rz_buffers.output_shape(), i);
+      XLA_SCOPED_LOGGING_TIMER_LEVEL("BufferComparator::CompareEqual", 2);
       BufferComparator comparator(output_shape,
                                   debug_options.xla_gpu_autotune_gemm_rtol());
       absl::StatusOr<bool> compare_result = comparator.CompareEqual(
