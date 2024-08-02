@@ -189,11 +189,14 @@ ENTRY main {
   const se::GpuComputeCapability& cc = GetCudaComputeCapability();
   bool changed = false;
   TF_ASSERT_OK_AND_ASSIGN(changed, RunHloPass(GpuConvRewriter(cc), m.get()));
+  ASSERT_TRUE(changed);
+  changed = false;
   TF_ASSERT_OK_AND_ASSIGN(
       changed, RunHloPass(CudnnFusedConvRewriter(GetCudaComputeCapability(),
                                                  GetDnnVersion(), CUDA_VERSION),
                           m.get()));
 
+  ASSERT_TRUE(changed);
   changed = false;
   DebugOptions opts = DefaultDebugOptionsIgnoringFlags();
 
@@ -216,11 +219,17 @@ ENTRY main {
   // Now send the same module through GpuConvAlgorithmPicker again.  The conv
   // should have the new scratch bytes.
   TF_ASSERT_OK_AND_ASSIGN(m, ParseAndReturnVerifiedModule(kHlo));
+  changed = false;
   TF_ASSERT_OK_AND_ASSIGN(changed, RunHloPass(GpuConvRewriter(cc), m.get()));
+  ASSERT_TRUE(changed);
+
+  changed = false;
   TF_ASSERT_OK_AND_ASSIGN(
       changed, RunHloPass(CudnnFusedConvRewriter(GetCudaComputeCapability(),
                                                  GetDnnVersion(), CUDA_VERSION),
                           m.get()));
+  ASSERT_TRUE(changed);
+
   changed = false;
   TF_ASSERT_OK_AND_ASSIGN(changed,
                           RunHloPass(GpuConvAlgorithmPicker(cfg), m.get()));
