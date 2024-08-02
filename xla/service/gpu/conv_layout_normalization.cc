@@ -146,6 +146,8 @@ absl::StatusOr<std::optional<HloInstruction*>> UpdateLayoutForCudnnConvolution(
     const Shape& s = op->shape();
     Shape s_reordered =
         ShapeUtil::MakeShapeWithDescendingLayoutAndSamePhysicalLayout(s);
+    // When hlo describes a forward graph convolution, op may be a parameter or
+    // a constant.
     HloInstruction* normalized_op = MaybeOperand0(op);
     HloInstruction* new_op;
     if (normalized_op->shape() == s_reordered) {
