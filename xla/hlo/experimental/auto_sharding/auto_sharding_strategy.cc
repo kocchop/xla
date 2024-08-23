@@ -39,6 +39,7 @@ limitations under the License.
 #include "absl/types/span.h"
 #include "xla/array.h"
 #include "xla/hlo/experimental/auto_sharding/auto_sharding.h"
+#include "xla/hlo/experimental/auto_sharding/auto_sharding_device_mesh.h"
 #include "xla/hlo/experimental/auto_sharding/auto_sharding_option.h"
 #include "xla/hlo/experimental/auto_sharding/auto_sharding_util.h"
 #include "xla/hlo/experimental/auto_sharding/auto_sharding_wrapper.h"
@@ -77,7 +78,7 @@ std::optional<HloSharding> ConstructImprovedSharding(
 std::pair<HloSharding, double>
 ComputeSliceShardingAndCommunicationCostFromOperand(
     const HloSharding& input_spec, const Shape& old_shape,
-    const Shape& new_shape, const Array<int64_t>& device_mesh,
+    const Shape& new_shape, const DeviceMesh& device_mesh,
     const ClusterEnvironment& cluster_env) {
   if (input_spec.IsReplicated()) {
     return std::make_pair(input_spec, 0);
@@ -135,7 +136,7 @@ BuildStrategyAndCost(
     const ClusterEnvironment& cluster_env, AutoShardingOption& option,
     const CallGraph& call_graph, const HloCostAnalysis& hlo_cost_analysis,
     bool trying_multiple_mesh_shapes) {
-  // const Array<int64_t>& device_mesh = cluster_env.device_mesh_;
+  // const DeviceMesh& device_mesh = cluster_env.device_mesh_;
   StrategyMap strategy_map;
   // This map stores all of the trimmed strategies due to user specified
   // sharding. The key is the instruction id, the value is the strategies. This
@@ -824,15 +825,7 @@ BuildStrategyAndCost(
               }
             };
 
-        if (IsCustomCallMarker(ins)) {
-          const HloInstruction* operand = ins->operand(0);
-          const StrategyGroup* src_strategy_group =
-              strategy_map.at(operand).get();
-          CHECK(src_strategy_group->is_tuple);
-          strategy_group = MaybeFollowInsStrategyGroup(
-              src_strategy_group, ins->shape(), instruction_id, strategy_groups,
-              cluster_env, pretrimmed_strategy_map);
-        } else if (IsSPMDFullToShardShapeCustomCall(ins)) {
+        if (IsSPMDFullToShardShapeCustomCall(ins)) {
           return absl::InternalError(
               "An SPMDFullToShardShape call found outside a manually "
               "partitioned sub-graph.");
@@ -1029,24 +1022,6 @@ BuildStrategyAndCost(
     CheckMemoryCosts(strategy_group.get(), ins->shape());
     strategy_map[ins] = std::move(strategy_group);
   }  // end of for loop
-
-  // If gradient accumulation is used, adjust the cost of all-reduce for
-  // gradient synchronization.
-  if (option.grad_acc_num_micro_batches > 1) {
-    // find gradient-computation instructions
-    std::vector<const HloInstruction*> grad_insts =
-        GetGradientComputationInstructions(instructions);
-    for (const HloInstruction* inst : grad_insts) {
-      StrategyGroup* stra_vector = strategy_map[inst].get();
-      CHECK(!stra_vector->is_tuple);
-
-      for (auto& stra : stra_vector->strategies) {
-        if (absl::StrContains(stra.name, "allreduce")) {
-          stra.communication_cost /= option.grad_acc_num_micro_batches;
-        }
-      }
-    }
-  }
 
   return std::make_tuple(std::move(strategy_map), std::move(strategy_groups),
                          std::move(associative_dot_pairs));

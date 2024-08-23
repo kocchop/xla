@@ -333,58 +333,6 @@ absl::Status GpuExecutor::GetKernelMetadata(GpuKernel* rocm_kernel,
   return absl::OkStatus();
 }
 
-absl::Status GpuExecutor::Launch(Stream* stream, const ThreadDim& thread_dims,
-                                 const BlockDim& block_dims,
-                                 const Kernel& kernel, const KernelArgs& args) {
-  GpuStreamHandle hipstream = AsGpuStreamValue(stream);
-  const GpuKernel* rocm_kernel = AsGpuKernel(&kernel);
-  hipFunction_t hipfunc = rocm_kernel->gpu_function();
-
-  if (rocm_kernel->cache_config() != KernelCacheConfig::kNoPreference) {
-    TF_RETURN_IF_ERROR(GpuDriver::FuncSetCacheConfig(
-        hipfunc, rocm_kernel->GetGpuCacheConfig()));
-  }
-
-  auto launch = [&](const KernelArgsPackedArrayBase& packed) {
-    CHECK_EQ(kernel.Arity() + (args.number_of_shared_bytes() > 0),
-             packed.number_of_arguments());
-
-    void** kernel_params =
-        const_cast<void**>(packed.argument_addresses().data());
-
-    return GpuDriver::LaunchKernel(
-        GetGpuContext(stream), kernel.name(), hipfunc, block_dims.x,
-        block_dims.y, block_dims.z, thread_dims.x, thread_dims.y, thread_dims.z,
-        args.number_of_shared_bytes(), hipstream, kernel_params, nullptr);
-  };
-
-  auto* packed_args = DynCast<KernelArgsPackedArrayBase>(&args);
-  if (packed_args) return launch(*packed_args);
-
-  if (auto* device_mem = DynCast<KernelArgsDeviceMemoryArray>(&args)) {
-    auto& pack = kernel.args_packing();
-    if (!pack) {
-      return absl::InternalError(
-          "Kernel is missing a custom arguments packing function for device "
-          "memory arguments array");
-    }
-
-    TF_ASSIGN_OR_RETURN(auto packed_args, pack(kernel, *device_mem));
-    return launch(*packed_args);
-  }
-
-  return absl::InternalError("Unsupported kernel arguments type");
-}
-
-absl::Status GpuExecutor::Launch(Stream* stream, const ThreadDim& thread_dims,
-                                 const BlockDim& block_dims,
-                                 const ClusterDim& cluster_dims,
-                                 const Kernel& kernel, const KernelArgs& args) {
-  if (cluster_dims.x != 1 || cluster_dims.y != 1 || cluster_dims.z != 1)
-    return absl::UnimplementedError("Not implemented for ROCm");
-  return Launch(stream, thread_dims, block_dims, kernel, args);
-}
-
 absl::Status GpuExecutor::LoadModule(const MultiModuleLoaderSpec& spec,
                                      ModuleHandle* module_handle) {
   // In GpuExecutor we store the pointer to the  HSACO binary  as
@@ -447,20 +395,6 @@ void GpuExecutor::Deallocate(DeviceMemoryBase* mem) {
   GpuDriver::DeviceDeallocate(context_, mem->opaque());
 }
 
-absl::StatusOr<std::unique_ptr<MemoryAllocation>>
-GpuExecutor::HostMemoryAllocate(uint64_t size) {
-  auto* buffer = GpuDriver::HostAllocate(context_, size);
-  if (buffer == nullptr && size > 0) {
-    return absl::InternalError(
-        absl::StrFormat("Failed to allocate HostMemory of size %d", size));
-  }
-  return std::make_unique<HostMemoryAllocation>(buffer, size, this);
-}
-
-void GpuExecutor::HostMemoryDeallocate(void* location, uint64_t size) {
-  return GpuDriver::HostDeallocate(context_, location);
-}
-
 bool GpuExecutor::SynchronizeAllActivity() {
   return GpuDriver::SynchronizeContext(context_);
 }
@@ -499,11 +433,7 @@ void GpuExecutor::DeallocateStream(Stream* stream) {
   }
   GpuStream* rocm_stream = AsGpuStream(stream);
   absl::MutexLock l(&alive_gpu_streams_mu_);
-  alive_gpu_streams_.erase(rocm_stream->platform_specific_stream());
-  if (!rocm_stream->IsIdle()) {
-    LOG(ERROR) << "Deallocating stream with pending work";
-  }
-  rocm_stream->Destroy();
+  alive_gpu_streams_.erase(rocm_stream->gpu_stream());
 }
 
 absl::Status GpuExecutor::BlockHostUntilDone(Stream* stream) {
@@ -642,23 +572,13 @@ absl::StatusOr<std::unique_ptr<Event>> GpuExecutor::CreateEvent() {
 
 absl::StatusOr<std::unique_ptr<Stream>> GpuExecutor::CreateStream(
     std::optional<std::variant<StreamPriority, int>> priority) {
-  auto gpu_stream = std::make_unique<GpuStream>(this);
-  if (priority.has_value()) {
-    if (std::holds_alternative<StreamPriority>(*priority)) {
-      gpu_stream->SetPriority(std::get<StreamPriority>(*priority));
-    } else {
-      gpu_stream->SetPriority(std::get<int>(*priority));
-    }
-  }
+  TF_ASSIGN_OR_RETURN(auto event, CreateGpuEvent(/*allow_timing=*/false));
+  auto stream = std::make_unique<GpuStream>(this, std::move(event), priority);
   absl::MutexLock l(&alive_gpu_streams_mu_);
-  bool init_worked = gpu_stream->Init();
-  if (init_worked) {
-    auto platform_specific_stream = gpu_stream->platform_specific_stream();
-    alive_gpu_streams_[platform_specific_stream] = gpu_stream.get();
-    return std::move(gpu_stream);
-  } else {
-    return absl::InvalidArgumentError("Failed to initialize GPU stream");
-  }
+  TF_RETURN_IF_ERROR(stream->Init());
+  auto gpu_stream = stream->gpu_stream();
+  alive_gpu_streams_[gpu_stream] = stream.get();
+  return std::move(stream);
 }
 
 absl::StatusOr<std::unique_ptr<CommandBuffer>> GpuExecutor::CreateCommandBuffer(

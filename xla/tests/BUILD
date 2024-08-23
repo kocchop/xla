@@ -201,6 +201,7 @@ cc_library(
         "//xla:xla_data_proto_cc",
         "//xla/hlo/ir:hlo",
         "//xla/hlo/ir:hlo_module_group",
+        "//xla/hlo/utils:hlo_query",
         "//xla/service:backend",
         "//xla/service:computation_layout",
         "//xla/service:hlo_module_util",
@@ -1782,12 +1783,16 @@ xla_test(
         ":literal_test_util",
         ":test_macros_header",
         ":xla_internal_test_main",
-        "//xla:array2d",
+        "//xla:array3d",
+        "//xla:array4d",
         "//xla:literal",
+        "//xla:literal_util",
+        "//xla:shape_util",
         "//xla:xla_data_proto_cc",
         "//xla/client:xla_builder",
         "//xla/hlo/ir:hlo",
-        "@tsl//tsl/platform:protobuf",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest_main",
         "@tsl//tsl/platform:test",
     ],
 )
@@ -1900,6 +1905,8 @@ xla_test(
         ":test_macros_header",
         ":test_utils",
         ":xla_internal_test_main",  # fixdeps: keep
+        "//xla:array2d",
+        "//xla:array3d",
         "//xla:literal",
         "//xla:literal_util",
         "//xla:shape_util",
@@ -1910,15 +1917,19 @@ xla_test(
         "//xla/ffi:attribute_map",
         "//xla/ffi:ffi_api",
         "//xla/hlo/ir:hlo",
+        "//xla/service",
         "//xla/service:custom_call_status",
         "//xla/service:custom_call_target_registry",
         "//xla/tsl/lib/core:status_test_util",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/base:dynamic_annotations",
         "@com_google_absl//absl/status",
+        "@com_google_absl//absl/status:statusor",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
+        "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/types:span",
+        "@eigen_archive//:eigen3",
         "@tsl//tsl/platform:statusor",
         "@tsl//tsl/platform:test",
     ],
@@ -2124,6 +2135,9 @@ xla_test(
 xla_test(
     name = "dynamic_reshape_test",
     srcs = ["dynamic_reshape_test.cc"],
+    backend_tags = {
+        "gpu": ["notsan"],  # TODO(b/345034145): Fix tsan error.
+    },
     disabled_backends = ["interpreter"],
     tags = ["test_xla_cpu_thunks"],
     deps = [
@@ -2228,7 +2242,6 @@ xla_test(
     tags = ["test_xla_cpu_thunks"],
     deps = [
         ":client_library_test_base",
-        ":literal_test_util",
         ":test_macros_header",
         ":xla_internal_test_main",
         "//xla:shape_util",
@@ -2236,7 +2249,6 @@ xla_test(
         "//xla:xla_data_proto_cc",
         "//xla/client:local_client",
         "//xla/client:xla_builder",
-        "//xla/stream_executor",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/base",
         "@tsl//tsl/platform:ml_dtypes",
@@ -2311,14 +2323,9 @@ xla_test(
     srcs = ["collective_pipeline_parallelism_test.cc"],
     args = ["--xla_force_host_platform_device_count=4"],
     backend_tags = {
-        # This test is tagged "manual" because it requires multiple GPUs, and Forge only supports
-        # single-GPU tests.  Guitar skips "manual" tests unless they're also tagged "guitar".
         "gpu": [
-            "guitar",
-            "manual",
             "multi_gpu",
             "no_oss",
-            "notap",
         ],
         "cpu": [
             "notsan",
@@ -2357,15 +2364,9 @@ xla_test(
     name = "collective_ops_e2e_test",
     srcs = ["collective_ops_e2e_test.cc"],
     backend_tags = {
-        # This test is tagged "manual" because it requires multiple GPUs, and
-        # Forge only supports single-GPU tests.  Guitar skips "manual" tests
-        # unless they're also tagged "guitar".
         "gpu": [
-            "guitar",
-            "manual",
             "multi_gpu",
             "no_oss",
-            "notap",
         ],
     },
     backends = [
@@ -2380,8 +2381,12 @@ xla_test(
         "//xla:literal",
         "//xla/hlo/ir:hlo",
         "//xla/hlo/utils:hlo_matchers",
+        "//xla/service:hlo_module_config",
         "//xla/service/gpu:backend_configs_cc",
         "//xla/stream_executor",
+        "@com_google_absl//absl/strings:string_view",
+        "@tsl//tsl/platform:statusor",
+        "@tsl//tsl/platform:test",
     ],
 )
 
@@ -2409,15 +2414,9 @@ xla_test(
     name = "replicated_io_feed_test",
     srcs = ["replicated_io_feed_test.cc"],
     backend_tags = {
-        # This test is tagged "manual" because it requires multiple GPUs, and
-        # Forge only supports single-GPU tests.  Guitar skips "manual" tests
-        # unless they're also tagged "guitar".
         "gpu": [
-            "guitar",
-            "manual",
             "multi_gpu",
             "no_oss",
-            "notap",
         ],
     },
     backends = ["gpu"],
@@ -2790,7 +2789,10 @@ xla_test(
     size = "large",
     srcs = ["local_client_execute_test.cc"],
     shard_count = 30,
-    tags = ["optonly"],
+    tags = [
+        "optonly",
+        "test_xla_cpu_thunks",
+    ],
     deps = [
         ":literal_test_util",
         ":local_client_test_base",
@@ -3081,6 +3083,9 @@ xla_test(
 xla_test(
     name = "set_dimension_size_test",
     srcs = ["set_dimension_size_test.cc"],
+    backend_tags = {
+        "gpu": ["notsan"],  # TODO(b/345034145): Fix tsan error.
+    },
     tags = ["test_xla_cpu_thunks"],
     deps = [
         ":hlo_test_base",
@@ -3189,6 +3194,7 @@ xla_test(
         "//xla:types",
         "//xla/hlo/ir:hlo",
         "@com_google_absl//absl/status:statusor",
+        "@tsl//tsl/platform:statusor",
         "@tsl//tsl/platform:test",
     ],
 )

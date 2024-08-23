@@ -1,19 +1,28 @@
-diff --ruN a/stablehlo/stablehlo/tests/math/ulp_difference_float32.mlir b/stablehlo/stablehlo/tests/math/ulp_difference_float32.mlir
---- stablehlo/stablehlo/tests/math/ulp_difference_float32.mlir
-+++ stablehlo/stablehlo/tests/math/ulp_difference_float32.mlir
-@@ -1,4 +1,5 @@
- // RUN: stablehlo-opt --chlo-legalize-to-stablehlo %s | stablehlo-translate --interpret
-+// XFAIL: *
- // This file is generated, see build_tools/math/README.md for more information.
- module @ulp_difference_float32 {
-   func.func public @main() {
-diff --ruN a/stablehlo/stablehlo/tests/math/ulp_difference_float64.mlir b/stablehlo/stablehlo/tests/math/ulp_difference_float64.mlir
---- stablehlo/stablehlo/tests/math/ulp_difference_float64.mlir
-+++ stablehlo/stablehlo/tests/math/ulp_difference_float64.mlir
-@@ -1,4 +1,5 @@
- // RUN: stablehlo-opt --chlo-legalize-to-stablehlo %s | stablehlo-translate --interpret
-+// XFAIL: *
- // This file is generated, see build_tools/math/README.md for more information.
- module @ulp_difference_float64 {
-   func.func public @main() {
+diff --ruN a/stablehlo/BUILD.bazel b/stablehlo/BUILD.bazel
+--- stablehlo/BUILD.bazel
++++ stablehlo/BUILD.bazel
+@@ -1283,6 +1283,7 @@
+         "@llvm-project//mlir:AllExtensions",
+         "@llvm-project//mlir:AllPassesAndDialects",
+         "@llvm-project//mlir:MlirOptLib",
++        "@llvm-project//mlir:QuantOps",
+         "@llvm-project//mlir:TosaDialect",
+     ],
+ )
+diff --ruN a/stablehlo/stablehlo/conversions/tosa/tests/lit.cfg.py b/stablehlo/stablehlo/conversions/tosa/tests/lit.cfg.py
+--- stablehlo/stablehlo/conversions/tosa/tests/lit.cfg.py
++++ stablehlo/stablehlo/conversions/tosa/tests/lit.cfg.py
+@@ -32,9 +32,9 @@
+ 
+ # Make LLVM and StableHLO tools available in RUN directives
+ tools = [
+-  'stablehlo-opt',
+-  'FileCheck',
+-  'stablehlo-translate',
++    'stablehlo-opt',
++    'FileCheck',
++    'stablehlo-translate',
+ ]
+ tool_dirs = [
+   config.llvm_tools_dir,
 
